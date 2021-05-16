@@ -1,0 +1,407 @@
+
+Description:  VPC for Workshops
+  This CF template is used to deploy resources needed for a VPC for Workshop purposes
+  It is a modified version of https://github.com/acantril/aws-sa-associate-saac02/tree/master/XX_CourseGeneral
+  CF_BastionHost - Deploys a bastionHost to access the VPC Private Resources (Can be removed to save costs)
+  CF_NatGateways - Deploys 3 NatGateways (this has a base cost, can be omitted if no private subnet network access is required - or removed when not studying to save costs)
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.11.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: SIN-VPC-DEV
+  IPv6CidrBlock:
+    Type: AWS::EC2::VPCCidrBlock
+    Properties:
+      VpcId: !Ref VPC
+      AmazonProvidedIpv6CidrBlock: true
+  InternetGateway:
+    Type: 'AWS::EC2::InternetGateway'
+    Properties:
+      Tags:
+      - Key: Name
+        Value: SIN-VPC-DEV-igw
+  InternetGatewayAttachment:
+    Type: 'AWS::EC2::VPCGatewayAttachment'
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+  RouteTableWeb: 
+    Type: 'AWS::EC2::RouteTable'
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+      - Key: Name
+        Value: SIN-VPC-DEV-rt-web
+  RouteTableWebDefaultIPv4: 
+    Type: 'AWS::EC2::Route'
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId:
+        Ref: RouteTableWeb
+      DestinationCidrBlock: '0.0.0.0/0'
+      GatewayId:
+        Ref: InternetGateway
+  RouteTableWebDefaultIPv6: 
+    Type: 'AWS::EC2::Route'
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId:
+        Ref: RouteTableWeb
+      DestinationIpv6CidrBlock: '::/0'
+      GatewayId:
+        Ref: InternetGateway
+  RouteTableAssociationWebA:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref SubnetWEBA
+      RouteTableId:
+        Ref: RouteTableWeb
+  RouteTableAssociationWebB:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref SubnetWEBB
+      RouteTableId:
+        Ref: RouteTableWeb
+  RouteTableAssociationWebC:
+    Type: 'AWS::EC2::SubnetRouteTableAssociation'
+    Properties:
+      SubnetId: !Ref SubnetWEBC
+      RouteTableId:
+        Ref: RouteTableWeb
+  SubnetReservedA:
+    Type: AWS::EC2::Subnet
+    DependsOn: IPv6CidrBlock
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: 10.11.0.0/20
+      AssignIpv6AddressOnCreation: true
+      Ipv6CidrBlock: 
+        Fn::Sub:
+          - "${VpcPart}${SubnetPart}"
+          - SubnetPart: '00::/64'
+            VpcPart: !Select [ 0, !Split [ '00::/56', !Select [ 0, !GetAtt VPC.Ipv6CidrBlocks ]]]
+      Tags:
+        - Key: Name
+          Value: sn-reserved-A
+  SubnetReservedB:
+    Type: AWS::EC2::Subnet
+    DependsOn: IPv6CidrBlock
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      CidrBlock: 10.11.64.0/20
+      AssignIpv6AddressOnCreation: true
+      Ipv6CidrBlock: 
+        Fn::Sub:
+          - "${VpcPart}${SubnetPart}"
+          - SubnetPart: '04::/64'
+            VpcPart: !Select [ 0, !Split [ '00::/56', !Select [ 0, !GetAtt VPC.Ipv6CidrBlocks ]]]
+      Tags:
+        - Key: Name
+          Value: sn-reserved-B
+  SubnetReservedC:
+    Type: AWS::EC2::Subnet
+    DependsOn: IPv6CidrBlock
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 2, !GetAZs '' ]
+      CidrBlock: 10.11.128.0/20
+      AssignIpv6AddressOnCreation: true
+      Ipv6CidrBlock: 
+        Fn::Sub:
+          - "${VpcPart}${SubnetPart}"
+          - SubnetPart: '08::/64'
+            VpcPart: !Select [ 0, !Split [ '00::/56', !Select [ 0, !GetAtt VPC.Ipv6CidrBlocks ]]]
+      Tags:
+        - Key: Name
+          Value: sn-reserved-C
+  SubnetDBA:
+    Type: AWS::EC2::Subnet
+    DependsOn: IPv6CidrBlock
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: 10.11.16.0/20
+      AssignIpv6AddressOnCreation: true
+      Ipv6CidrBlock: 
+        Fn::Sub:
+          - "${VpcPart}${SubnetPart}"
+          - SubnetPart: '01::/64'
+            VpcPart: !Select [ 0, !Split [ '00::/56', !Select [ 0, !GetAtt VPC.Ipv6CidrBlocks ]]]
+      Tags:
+        - Key: Name
+          Value: sn-db-A
+  SubnetDBB:
+    Type: AWS::EC2::Subnet
+    DependsOn: IPv6CidrBlock
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      CidrBlock: 10.11.80.0/20
+      AssignIpv6AddressOnCreation: true
+      Ipv6CidrBlock: 
+        Fn::Sub:
+          - "${VpcPart}${SubnetPart}"
+          - SubnetPart: '05::/64'
+            VpcPart: !Select [ 0, !Split [ '00::/56', !Select [ 0, !GetAtt VPC.Ipv6CidrBlocks ]]]
+      Tags:
+        - Key: Name
+          Value: sn-db-B
+  SubnetDBC:
+    Type: AWS::EC2::Subnet
+    DependsOn: IPv6CidrBlock
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 2, !GetAZs '' ]
+      CidrBlock: 10.11.144.0/20
+      AssignIpv6AddressOnCreation: true
+      Ipv6CidrBlock: 
+        Fn::Sub:
+          - "${VpcPart}${SubnetPart}"
+          - SubnetPart: '09::/64'
+            VpcPart: !Select [ 0, !Split [ '00::/56', !Select [ 0, !GetAtt VPC.Ipv6CidrBlocks ]]]
+      Tags:
+        - Key: Name
+          Value: sn-db-C
+  SubnetAPPA:
+    Type: AWS::EC2::Subnet
+    DependsOn: IPv6CidrBlock
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: 10.11.32.0/20
+      AssignIpv6AddressOnCreation: true
+      Ipv6CidrBlock: 
+        Fn::Sub:
+          - "${VpcPart}${SubnetPart}"
+          - SubnetPart: '02::/64'
+            VpcPart: !Select [ 0, !Split [ '00::/56', !Select [ 0, !GetAtt VPC.Ipv6CidrBlocks ]]]
+      Tags:
+        - Key: Name
+          Value: sn-app-A
+  SubnetAPPB:
+    Type: AWS::EC2::Subnet
+    DependsOn: IPv6CidrBlock
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      CidrBlock: 10.11.96.0/20
+      AssignIpv6AddressOnCreation: true
+      Ipv6CidrBlock: 
+        Fn::Sub:
+          - "${VpcPart}${SubnetPart}"
+          - SubnetPart: '06::/64'
+            VpcPart: !Select [ 0, !Split [ '00::/56', !Select [ 0, !GetAtt VPC.Ipv6CidrBlocks ]]]
+      Tags:
+        - Key: Name
+          Value: sn-app-B
+  SubnetAPPC:
+    Type: AWS::EC2::Subnet
+    DependsOn: IPv6CidrBlock
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 2, !GetAZs '' ]
+      CidrBlock: 10.11.160.0/20
+      AssignIpv6AddressOnCreation: true
+      Ipv6CidrBlock: 
+        Fn::Sub:
+          - "${VpcPart}${SubnetPart}"
+          - SubnetPart: '0A::/64'
+            VpcPart: !Select [ 0, !Split [ '00::/56', !Select [ 0, !GetAtt VPC.Ipv6CidrBlocks ]]]
+      Tags:
+        - Key: Name
+          Value: sn-app-C
+  SubnetWEBA:
+    Type: AWS::EC2::Subnet
+    DependsOn: IPv6CidrBlock
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ]
+      CidrBlock: 10.11.48.0/20
+      MapPublicIpOnLaunch: true
+      Ipv6CidrBlock: 
+        Fn::Sub:
+          - "${VpcPart}${SubnetPart}"
+          - SubnetPart: '03::/64'
+            VpcPart: !Select [ 0, !Split [ '00::/56', !Select [ 0, !GetAtt VPC.Ipv6CidrBlocks ]]]
+      Tags:
+        - Key: Name
+          Value: sn-web-A
+  SubnetWEBB:
+    Type: AWS::EC2::Subnet
+    DependsOn: IPv6CidrBlock
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 1, !GetAZs '' ]
+      CidrBlock: 10.11.112.0/20
+      MapPublicIpOnLaunch: true
+      Ipv6CidrBlock: 
+        Fn::Sub:
+          - "${VpcPart}${SubnetPart}"
+          - SubnetPart: '07::/64'
+            VpcPart: !Select [ 0, !Split [ '00::/56', !Select [ 0, !GetAtt VPC.Ipv6CidrBlocks ]]]
+      Tags:
+        - Key: Name
+          Value: sn-web-B
+  SubnetWEBC:
+    Type: AWS::EC2::Subnet
+    DependsOn: IPv6CidrBlock
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [ 2, !GetAZs '' ]
+      CidrBlock: 10.11.176.0/20
+      MapPublicIpOnLaunch: true
+      Ipv6CidrBlock: 
+        Fn::Sub:
+          - "${VpcPart}${SubnetPart}"
+          - SubnetPart: '0B::/64'
+            VpcPart: !Select [ 0, !Split [ '00::/56', !Select [ 0, !GetAtt VPC.Ipv6CidrBlocks ]]]
+      Tags:
+        - Key: Name
+          Value: sn-web-C
+  IPv6WorkaroundSubnetWEBA:
+    Type: Custom::SubnetModify
+    Properties:
+      ServiceToken: !GetAtt IPv6WorkaroundLambda.Arn
+      SubnetId: !Ref SubnetWEBA
+  IPv6WorkaroundSubnetWEBB:
+    Type: Custom::SubnetModify
+    Properties:
+      ServiceToken: !GetAtt IPv6WorkaroundLambda.Arn
+      SubnetId: !Ref SubnetWEBB
+  IPv6WorkaroundSubnetWEBC:
+    Type: Custom::SubnetModify
+    Properties:
+      ServiceToken: !GetAtt IPv6WorkaroundLambda.Arn
+      SubnetId: !Ref SubnetWEBC
+  IPv6WorkaroundRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - lambda.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Path: "/"
+      Policies:
+        - PolicyName: !Sub "ipv6-fix-logs-${AWS::StackName}"
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action:
+              - logs:CreateLogGroup
+              - logs:CreateLogStream
+              - logs:PutLogEvents
+              Resource: arn:aws:logs:*:*:*
+        - PolicyName: !Sub "ipv6-fix-modify-${AWS::StackName}"
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action:
+              - ec2:ModifySubnetAttribute
+              Resource: "*"
+  IPv6WorkaroundLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Handler: "index.lambda_handler"
+      Code: #import cfnresponse below required to send respose back to CFN
+        ZipFile:
+          Fn::Sub: |
+            import cfnresponse
+            import boto3
+
+            def lambda_handler(event, context):
+                if event['RequestType'] is 'Delete':
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS)
+                  return
+
+                responseValue = event['ResourceProperties']['SubnetId']
+                ec2 = boto3.client('ec2', region_name='${AWS::Region}')
+                ec2.modify_subnet_attribute(AssignIpv6AddressOnCreation={
+                                                'Value': True
+                                              },
+                                              SubnetId=responseValue)
+                responseData = {}
+                responseData['SubnetId'] = responseValue
+                cfnresponse.send(event, context, cfnresponse.SUCCESS, responseData, "CustomResourcePhysicalID")
+      Runtime: python2.7
+      Role: !GetAtt IPv6WorkaroundRole.Arn
+      Timeout: 30
+Outputs:
+  AWSWorkshopVPC:
+    Description: AWSWorkshopVPC_ID
+    Value: !Ref VPC
+    Export: 
+      Name: SIN-VPC-DEV
+  AWSWorkshopVPCSubnetWebA:
+    Description: AWSWorkshopVPC SubnetWEBA
+    Value: !Ref SubnetWEBA
+    Export:
+      Name: SIN-VPC-DEV-subnet-weba
+  AWSWorkshopVPCSubnetWebB:
+    Description: AWSWorkshopVPC SubnetWEBB
+    Value: !Ref SubnetWEBB
+    Export:
+      Name: SIN-VPC-DEV-subnet-webb
+  AWSWorkshopVPCSubnetWebC:
+    Description: AWSWorkshopVPC SubnetWEBC
+    Value: !Ref SubnetWEBC
+    Export:
+      Name: SIN-VPC-DEV-subnet-webc
+  AWSWorkshopVPCSubnetAppA:
+    Description: AWSWorkshopVPC SubnetAPPA
+    Value: !Ref SubnetAPPA
+    Export:
+      Name: SIN-VPC-DEV-subnet-appa
+  AWSWorkshopVPCSubnetAppB:
+    Description: AWSWorkshopVPC SubnetAPPB
+    Value: !Ref SubnetAPPB
+    Export:
+      Name: SIN-VPC-DEV-subnet-appb
+  AWSWorkshopVPCSubnetAppC:
+    Description: AWSWorkshopVPC SubnetAPPC
+    Value: !Ref SubnetAPPC
+    Export:
+      Name: SIN-VPC-DEV-subnet-appc
+  AWSWorkshopVPCSubnetDBA:
+    Description: AWSWorkshopVPC SubnetDBA
+    Value: !Ref SubnetDBA
+    Export:
+      Name: SIN-VPC-DEV-subnet-dba
+  AWSWorkshopVPCSubnetDBB:
+    Description: AWSWorkshopVPC SubnetDBB
+    Value: !Ref SubnetDBB
+    Export:
+      Name: SIN-VPC-DEV-subnet-dbb
+  AWSWorkshopVPCSubnetDBC:
+    Description: AWSWorkshopVPC SubnetDBC
+    Value: !Ref SubnetDBC
+    Export:
+      Name: SIN-VPC-DEV-subnet-dbc
+  AWSWorkshopVPCSubnetReservedA:
+    Description: AWSWorkshopVPC SubnetReservedA
+    Value: !Ref SubnetReservedA
+    Export:
+      Name: SIN-VPC-DEV-subnet-reserveda
+  AWSWorkshopVPCSubnetReservedB:
+    Description: AWSWorkshopVPC SubnetReservedB
+    Value: !Ref SubnetReservedB
+    Export:
+      Name: SIN-VPC-DEV-subnet-reservedb
+  AWSWorkshopVPCSubnetReservedC:
+    Description: AWSWorkshopVPC SubnetReservedC
+    Value: !Ref SubnetReservedC
+    Export:
+      Name: SIN-VPC-DEV-subnet-reservedc
