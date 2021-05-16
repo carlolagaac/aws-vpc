@@ -156,7 +156,7 @@ Resources:
         - Key: AppName
           Value: !Join [ '', [ 'ha-vpc-app' ] ]          
 #Configure App Subnet C
-  AppSubnetB:
+  AppSubnetC:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
@@ -333,7 +333,7 @@ Resources:
       SubnetId: !Ref AppSubnetB
 
 #Configure Application Subnet C Route Table
-  AppRouteTableB:
+  AppRouteTableC:
     Type: AWS::EC2::RouteTable
     Properties:
       VpcId: !Ref VPC
@@ -343,7 +343,7 @@ Resources:
         - Key: AppName
           Value: !Join [ '', [ 'ha-vpc-app' ] ]          
 
-  AppRouteB:
+  AppRouteC:
     Type: AWS::EC2::Route
     Properties:
       RouteTableId: !Ref AppRouteTableC
