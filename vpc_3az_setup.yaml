@@ -197,7 +197,7 @@ Resources:
         - Key: AppName
           Value: !Join [ '', [ 'ha-vpc-app' ] ]          
 #Configure Data Subnet C
-  DataSubnetB:
+  DataSubnetC:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref VPC
@@ -405,7 +405,7 @@ Resources:
       SubnetId: !Ref DataSubnetB
 
 #Configure Data Subnet C Route Table
-  DataRouteTableB:
+  DataRouteTableC :
     Type: AWS::EC2::RouteTable
     Properties:
       VpcId: !Ref VPC
@@ -415,7 +415,7 @@ Resources:
         - Key: AppName
           Value: !Join [ '', [ 'ha-vpc-app' ] ]          
 
-  DataRouteB:
+  DataRouteC:
     Type: AWS::EC2::Route
     Properties:
       RouteTableId: !Ref DataRouteTableC
